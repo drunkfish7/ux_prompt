@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>交互文案 Prompt 生成</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f5f5f5; }
+        .container { max-width: 800px; margin-top: 2rem; }
+        .card { border-radius: 8px; }
+        .card-title { color: white; }
+        .input-field input:focus, .input-field textarea:focus { border-bottom: 1px solid #2196F3 !important; box-shadow: 0 1px 0 0 #2196F3 !important; }
+        .dropdown-content li > a, .dropdown-content li > span { color: black; }
+        .dropdown-content li:hover { background-color: rgba(0,0,0,0.1); }
+        .notion-like-option { display: flex; align-items: center; padding: 8px; }
+        .notion-like-option .color-dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; }
+        #toast { position: fixed; bottom: 16px; right: 16px; background-color: #4CAF50; color: white; padding: 16px; border-radius: 4px; display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="card-content">
+                <span class="card-title blue darken-2 white-text center-align" style="padding: 20px; margin: -24px -24px 24px -24px; border-top-left-radius: 8px; border-top-right-radius: 8px;">交互文案 Prompt 生成</span>
+                <div class="row">
+                    <div class="input-field col s12">
+                        <select id="role">
+                            <option value="你是 K12 在线学习激励专家" data-color="#BBDEFB">你是 K12 在线学习激励专家</option>
+                            <option value="你是一位充满想象力的 K12 教育游戏设计师" data-color="#C8E6C9">你是一位充满想象力的 K12 教育游戏设计师</option>
+                            <option value="你是一位善解人意的 K12 学习成长顾问" data-color="#FFF9C4">你是一位善解人意的 K12 学习成长顾问</option>
+                            <option value="你是一位体贴入微的 K12 家校沟通专家" data-color="#F8BBD0">你是一位体贴入微的 K12 家校沟通专家</option>
+                            <option value="你是一位长于妙语的 K12 教育游戏命名大师" data-color="#E1BEE7">你是一位长于妙语的 K12 教育游戏命名大师</option>
+                        </select>
+                        <label>角色</label>
+                    </div>
+                    <div class="input-field col s12">
+                        <input id="info" type="text">
+                        <label for="info">文案要传达的基本信息</label>
+                    </div>
+                    <div class="input-field col s12">
+                        <input id="context" type="text">
+                        <label for="context">文案所在页面、流程、用户情感</label>
+                    </div>
+                    <div class="input-field col s12">
+                        <input id="action" type="text">
+                        <label for="action">操作按钮</label>
+                    </div>
+                    <div class="input-field col s12">
+                        <input id="wordCount" type="number">
+                        <label for="wordCount">字数</label>
+                    </div>
+                    <div class="input-field col s12">
+                        <textarea id="preview" class="materialize-textarea" readonly></textarea>
+                        <label for="preview">预览生成文案</label>
+                        <a class="btn-floating btn-small waves-effect waves-light blue right" onclick="copyText('preview')"><i class="material-icons">content_copy</i></a>
+                    </div>
+                    <div class="col s12">
+                        <label>
+                            <input type="checkbox" id="aiAssist" />
+                            <span>AI 辅助</span>
+                        </label>
+                    </div>
+                    <div id="aiOutput" class="input-field col s12" style="display: none;">
+                        <textarea id="aiResult" class="materialize-textarea" readonly></textarea>
+                        <label for="aiResult">AI 生成结果</label>
+                        <a class="btn-floating btn-small waves-effect waves-light blue right" onclick="copyText('aiResult')"><i class="material-icons">content_copy</i></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast">复制成功</div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var elems = document.querySelectorAll('select');
+            var instances = M.FormSelect.init(elems, {});
+            
+            // 自定义下拉选项的渲染
+            var roleSelect = document.getElementById('role');
+            roleSelect.parentNode.querySelector('.dropdown-content').querySelectorAll('li').forEach(function(li) {
+                var span = li.querySelector('span');
+                if (span) {
+                    var option = roleSelect.querySelector('option[value="' + span.textContent + '"]');
+                    if (option) {
+                        var color = option.getAttribute('data-color');
+                        li.innerHTML = `
+                            <span class="notion-like-option">
+                                <span class="color-dot" style="background-color: ${color};"></span>
+                                ${span.textContent}
+                            </span>
+                        `;
+                    }
+                }
+            });
+        });
+
+        function updatePreview() {
+            const role = document.getElementById('role').value;
+            const info = document.getElementById('info').value;
+            const context = document.getElementById('context').value;
+            const action = document.getElementById('action').value;
+            const wordCount = document.getElementById('wordCount').value;
+            
+            let preview = `${role}，根据以下要求撰写介面文案：${info}${context}${action}`;
+            if (wordCount.trim() !== '') {
+                preview += `，字数限制在 ${wordCount}个字`;
+            }
+            document.getElementById('preview').value = preview;
+            M.textareaAutoResize(document.getElementById('preview'));
+        }
+
+        function copyText(elementId) {
+            const element = document.getElementById(elementId);
+            element.select();
+            document.execCommand('copy');
+            showToast();
+        }
+
+        function showToast() {
+            const toast = document.getElementById('toast');
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 2000);
+        }
+
+        document.getElementById('role').addEventListener('change', updatePreview);
+        document.getElementById('info').addEventListener('input', updatePreview);
+        document.getElementById('context').addEventListener('input', updatePreview);
+        document.getElementById('action').addEventListener('input', updatePreview);
+        document.getElementById('wordCount').addEventListener('input', updatePreview);
+
+        document.getElementById('aiAssist').addEventListener('change', function() {
+            const aiOutput = document.getElementById('aiOutput');
+            if (this.checked) {
+                aiOutput.style.display = 'block';
+                const prompt = document.getElementById('preview').value;
+                fetch('https://api.nio.gs/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer sk-p8NhwLZorw1Ixs0S92Ea7bDc60A748008d1bBe8cAeF301E9',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        max_tokens: 1200,
+                        model: "gpt-4o-mini",
+                        temperature: 0.8,
+                        top_p: 1,
+                        presence_penalty: 1,
+                        messages: [
+                            {
+                                role: "system",
+                                content: "You are a Chinese prompt generation expert. I will input some incomplete prompt texts for you, and based on what I provide, you will generate a complete, high-quality, and well-structured Chinese prompt. The requirements are as follows: First, refine the core message that the text is intended to convey. Then, complete or embellish the context of the copy, including the page, process, and the user's emotions on this page. Additionally, complete or enhance the user's possible actions. Finally, refine the entire prompt using concise, accurate, and appropriate Chinese, ensuring that it is complete, high-quality, and well-structured. Your first incomplete prompt text is:" + prompt
+                            }
+                        ]
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('aiResult').value = data.choices[0].message.content;
+                    M.textareaAutoResize(document.getElementById('aiResult'));
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('aiResult').value = "An error occurred while fetching AI response.";
+                    M.textareaAutoResize(document.getElementById('aiResult'));
+                });
+            } else {
+                aiOutput.style.display = 'none';
+            }
+        });
+
+        // 初始化预览
+        updatePreview();
+    </script>
+</body>
+</html>
